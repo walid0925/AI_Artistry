@@ -3,7 +3,7 @@ import pandas as pd
 from PIL import Image
 from keras import backend as K
 from keras.preprocessing.image import load_img, img_to_array
-from keras.applications import VGG19
+from keras.applications import VGG16
 from keras.applications.vgg16 import preprocess_input
 from keras.layers import Input
 from scipy.optimize import fmin_l_bfgs_b
@@ -38,9 +38,6 @@ gIm0 = np.random.randint(256, size=(targetWidth, targetHeight, 3)).astype('float
 gIm0 = preprocess_input(np.expand_dims(gIm0, axis=0))
 
 gImPlaceholder = K.placeholder(shape=(1, targetWidth, targetHeight, 3))
-
-# gIm0 = img_to_array(cImage)
-# gIm0 = preprocess_input(np.expand_dims(gIm0, axis=0)).astype('float64')
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 ## Define loss and helper functions
@@ -86,12 +83,18 @@ def get_total_loss(gImPlaceholder, alpha=1.0, beta=10000.0):
     return totalLoss
 
 def calculate_loss(gImArr):
+    """
+    Calculate total loss using K.function
+    """
     if gImArr.shape != (1, targetWidth, targetWidth, 3):
         gImArr = gImArr.reshape((1, targetWidth, targetHeight, 3))
     loss_fcn = K.function([gModel.input], [get_total_loss(gModel.input)])
     return loss_fcn([gImArr])[0].astype('float64')
 
 def get_grad(gImArr):
+    """
+    Calculate the gradient of the loss function with respect to the generated image
+    """
     if gImArr.shape != (1, targetWidth, targetHeight, 3):
         gImArr = gImArr.reshape((1, targetWidth, targetHeight, 3))
     grad_fcn = K.function([gModel.input], K.gradients(get_total_loss(gModel.input), [gModel.input]))
@@ -121,12 +124,6 @@ def save_original_size(x, target_size=cImageSizeOrig):
     xIm = xIm.resize(target_size)
     xIm.save(genImOutputPath)
     return xIm
-
-def callback_save_image(x_val):
-    xOut = postprocess_array(x_val)
-    xIm = save_original_size(xOut)
-    print 'Image saved via callback'
-    return x_val
 
 tf_session = K.get_session()
 cModel = VGG16(include_top=False, weights='imagenet', input_tensor=cImArr)
